@@ -331,3 +331,70 @@ Oh, you've just got REST endpoints you hit? That's fine too! You can easily filt
 In our code we're using the `useLoaderData's` type generic and specifying our `LoaderData` so we can get nice auto-complete, but it's not really getting us type safety because the loader and the `useLoaderData` are running in completely different environments. Remix ensures we get what the server sent, but who really knows? Maybe in a fit of rage, your co-worker set up your server to automatically remove references to dogs (they prefer cats).
 
 So the only way to really be 100% positive that your data is correct, you should use [assertion functions](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#assertion-functions) on the data you get back from useLoaderData. That's outside the scope of this tutorial, but we're fans of [zod](https://www.npmjs.com/package/zod) which can aid in this.
+
+
+# Mutations
+We've got ourselves a `/jokes/new route`, but that form doesn't do anything yet. Let's wire it up! As a reminder here's what that code should look like right now (the method="post" is important so make sure yours has it):
+
+*app/routes/jokes/new.tsx*
+```
+
+export default function NewJokeRoute() {
+  return (
+    <div>
+      <p>Add your own hilarious joke</p>
+      <form method="post">
+        <div>
+          <label>
+            Name: <input type="text" name="name" />
+          </label>
+        </div>
+        <div>
+          <label>
+            Content: <textarea name="content" />
+          </label>
+        </div>
+        <div>
+          <button type="submit" className="button">
+            Add
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+```
+
+Not much there. Just a form. What if I told you that you could make that form work with a single export to the route module? Well you can! It's the [action](https://remix.run/docs/en/v1/api/conventions#action) function export! Read up on that a bit.
+
+If you've got that working, you should be able to create new jokes and be redirected to the new joke's page.
+```
+
+The redirect utility is a simple utility in Remix for creating a Response object that has the right headers/status codes to redirect the user.
+
+```
+
+
+Hooray! How cool is that? No `useEffect` or `useAnything hooks`. Just a form, and an async function to process the submission. Pretty cool. You can definitely still do all that stuff if you wanted to, but why would you? This is really nice.
+
+Another thing you'll notice is that when we were redirected to the joke's new page, it was there! But we didn't have to think about updating the cache at all. Remix handles invalidating the cache for us automatically. You don't have to think about it. That is cool 😎
+
+Why don't we add some validation? We could definitely do the typical React validation approach. Wiring up useState with `onChange`handlers and such. And sometimes that's nice to get some real-time validation as the user's typing. But even if you do all that work, you're still going to want to do validation on the server.
+
+Before I set you off on this one, there's one more thing you need to know about route module action functions. The return value is expected to be the same as the loader function: A response, or (as a convenience) a serializable JavaScript object. Normally you want to redirect when the action is successful to avoid the annoying "confirm resubmission" dialog you might have seen on some websites.
+
+But if there's an error, you can return an object with the error messages and then the component can get those values from [useActionData](https://remix.run/docs/en/v1/api/remix#useactiondata) and display them to the user.
+
+
+Why don't you pop open my code example for a second. I want to show you a few things about the way I'm doing this.
+
+First I want you to notice that I've added an `ActionData` type so we could get some type safety. Keep in mind that `useActionData` can return `undefined` if the action hasn't been called yet, so we've got a bit of defensive programming going on there.
+
+You may also notice that I return the fields as well. This is so that the form can be re-rendered with the values from the server in the event that `JavaScript` fails to load for some reason. That's what the `defaultValue` stuff is all about as well.
+
+The `badRequest` helper function is important because it gives us typechecking that ensures our return value is of type `ActionData`, while still returning the accurate HTTP status, [400 Bad Request](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400), to the client. If we just return the `ActionData` value, that would result in a`200 OK` response, which isn't suitable since the form submission had errors.
+
+Another thing I want to call out is how all of this is just so nice and declarative. You don't have to think about state at all here. Your action gets some data, you process it and return a value. The component consumes the action data and renders based on that value. No managing state here. No thinking about race conditions. Nothing.
+
+Oh, and if you do want to have client-side validation (for while the user is typing), you can simply call the `validateJokeContent` and `validateJokeName` functions that the action is using. You can actually seamlessly share code between the client and server! Now that is cool!
