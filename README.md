@@ -140,7 +140,7 @@ Most real-world applications require some form of data persistence. In our case,
 
 You can use any persistence solution you like with Remix; [Firebase](https://firebase.google.com/), [Supabase](https://supabase.com/), [Airtable](https://www.airtable.com/), [Hasura](https://hasura.io/), [Google Spreadsheets](https://www.google.com/sheets/about/), [Cloudflare Workers KV](https://www.cloudflare.com/products/workers-kv/), [Fauna](https://fauna.com/features), a custom [PostgreSQL](https://www.postgresql.org/), or even your backend team's REST/GraphQL APIs. Seriously. Whatever you want.
 
-#### Set up Prisma
+#### Set up Prisma:
 ```
 The prisma team has built a VSCode extension you might find quite helpful when working on the prisma schema.
 ```
@@ -265,5 +265,69 @@ Add this to your package.json:
 ```
 Now, whenever we reset the database, prisma will call our seeding file as well.
 
+#### Connect to Database:
+Ok, one last thing we need to do is connect to the database in our app. We do this at the top of our prisma/seed.ts file:
+```
+import { PrismaClient } from "@prisma/client";
+const db = new PrismaClient();
+```
+This works just fine, but the problem is, during development, we don't want to close down and completely restart our server every time we make a server-side change. So `@remix-run/serve` actually rebuilds our code and requires it brand new. The problem here is that every time we make a code change, we'll make a new connection to the database and eventually run out of connections! This is such a common problem with database-accessing apps that Prisma has a warning for it:
+
+**Warning: 10 Prisma Clients are already running**
+
+So we've got a little bit of extra work to do to avoid this development time problem.
+
+**Note** that this isn't a remix-only problem. Any time you have "live reload" of server code, you're going to have to either disconnect and reconnect to databases (which can be slow) or do the workaround I'm about to show you.
 
 
+I'll leave analysis of this code as an exercise for the reader because again, this has nothing to do with Remix directly.
+
+The one thing that I will call out is the file name convention. The `.server` part of the filename informs Remix that this code should never end up in the browser. This is optional, because Remix does a good job of ensuring server code doesn't end up in the client. But sometimes some server-only dependencies are difficult to treeshake, so adding the .server to the filename is a hint to the compiler to not worry about this module or its imports when bundling for the browser. The `.server` acts as a sort of boundary for the compiler.
+
+
+#### Read from Database in Remix loader:
+
+Ok, ready to get back to writing Remix code? Me too!
+
+Our goal is to put a list of jokes on the `/jokes `route so we can have a list of links to jokes people can choose from. In Remix, each route module is responsible for getting its own data. So if we want data on the `/jokes route`, then we'll be updating the `app/routes/jokes.tsx `file.
+
+To load data in a Remix route module, you use a [loader](https://remix.run/docs/en/v1/api/conventions#loader). This is simply an async function you export that returns a response, and is accessed on the component through the [useLoaderData](https://remix.run/docs/en/v1/api/remix#useloaderdata) hook. 
+
+
+```
+Remix and the tsconfig.json you get from the starter template are configured to allow imports from the app/ directory via ~ as demonstrated above so you don't have ../../ all over the place.
+```
+
+
+#### Data Overfetching
+
+I want to call out something specific in my solution. Here's my loader:
+```
+
+type LoaderData = {
+  jokeListItems: Array<{ id: string; name: string }>;
+};
+
+export const loader: LoaderFunction = async () => {
+  const data: LoaderData = {
+    jokeListItems: await db.joke.findMany({
+      take: 5,
+      select: { id: true, name: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  };
+  return json(data);
+};
+
+```
+Notice that all I need for this page is the joke `id` and `name`. I don't need to bother getting the content. I'm also limiting to a total of`5` items and ordering by creation date so we get the latest jokes. So with prisma, I can change my query to be exactly what I need and avoid sending too much data to the client! That makes my app faster and more responsive for my users.
+
+And to make it even cooler, you don't necessarily need prisma or direct database access to do this. You've got a graphql backend you're hitting? Sweet, use your regular graphql stuff in your loader. It's even better than doing it on the client because you don't need to worry about shipping a [huge graphql client](https://bundlephobia.com/package/graphql@16.0.1) to the client. Keep that on your server and filter down to what you want.
+
+Oh, you've just got REST endpoints you hit? That's fine too! You can easily filter out the extra data before sending it off in your loader. Because it all happens on the server, you can save your user's download size easily without having to convince your backend engineers to change their entire API. Neat!
+
+#### Network Safety
+
+In our code we're using the `useLoaderData's` type generic and specifying our `LoaderData` so we can get nice auto-complete, but it's not really getting us type safety because the loader and the `useLoaderData` are running in completely different environments. Remix ensures we get what the server sent, but who really knows? Maybe in a fit of rage, your co-worker set up your server to automatically remove references to dogs (they prefer cats).
+
+So the only way to really be 100% positive that your data is correct, you should use [assertion functions](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#assertion-functions) on the data you get back from useLoaderData. That's outside the scope of this tutorial, but we're fans of [zod](https://www.npmjs.com/package/zod) which can aid in this.
