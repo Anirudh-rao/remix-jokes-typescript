@@ -481,17 +481,55 @@ Here's that written out:
 
 1. On the `/login` route.
 2. User submits login form.
-   Form data is validated.
+   Form data is validated,
 If the form data is invalid, return the form with the errors.
-3. Login type is **"register"**
-   Check whether the username is available
+3. Login type is **"register"** .
+   Check whether the username is available,
 If the username is not available, return the form with an error.
-4.  Hash the password
-    Create a new user
-    Login type is **"login"**
-  Check whether the user exists
+4.  Hash the password ,
+    Create a new user,
+    Login type is **"login"**.
+  Check whether the user exists,
   If the user doesn't exist, return the form with an error.
-5. Check whether the password hash matches
+5. Check whether the password hash matches,
   If the password hash doesn't match, return the form with an error.
-7. Create a new session
+7. Create a new session,
  Redirect to the `/jokes`route with the `Set-Cookie` header.
+
+ 
+#### Building Login Form
+
+Notice in my solution I'm using `useSearchParams` to get the `redirectTo` query parameter and putting that in a hidden input. This way our `action` can know where to redirect the user. This will be useful later when we redirect a user to the login page.
+
+Great, now that we've got the UI looking nice, let's add some logic. This will be very similar to the sort of thing we did in the `/jokes/new route`. Fill in as much as you can (validation and stuff) and we'll just leave comments for the parts of the logic we don't have implemented yet (like actually registering/logging in).
+
+
+Sweet! Now it's time for the juicy stuff. Let's start with the `login` side of things. We seed in a user with the username "kody" and the password (hashed) is "twixrox". So we want to implement enough logic that will allow us to login as that user. We're going to put this logic in a separate file called `app/utils/session.server.ts`.
+
+Here's what we need in that file to get started:
+
+1. Export a function called login that accepts the username and password
+2. Queries prisma for a user with the username
+3. If there is no user, return null
+4. Use bcrypt.compare to compare the given password to the user's       passwordHash
+5. If the passwords don't match, return null
+6. If the passwords match, return the user
+
+To check our work, I added a console.log to app/routes/login.tsx after the login call.
+```
+Remember, actions and loaders run on the server, so console.log calls you put in those you can't see in the browser console. Those will show up in the terminal window you're running your server in.
+```
+
+If you're having trouble, run npx prisma studio to see the database in the browser. It's possible you don't have any data because you forgot to run npx prisma db seed (like I did when I was writing this 😅).
+
+Wahoo! We got the user! Now we need to put that user's ID into the session. We're going to do this in app/utils/session.server.ts. Remix has a built-in abstraction to help us with managing several types of storage mechanisms for sessions (here are the [docs](https://remix.run/docs/en/v1/api/remix#sessions)). We'll be using `createCookieSessionStorage` as it's the simplest and scales quite well.
+
+Write a createUserSession function in app/utils/session.server.ts that accepts a user ID and a route to redirect to. It should do the following:
+
+1. creates a new session (via the cookie storage getSession function)
+2. sets the userId field on the session
+3. redirects to the given route setting the Set-Cookie header (via the cookie storage commitSession function)
+
+```
+Note: If you need a hand, there's a small example of how the whole basic flow goes in the session docs. Once you have that, you'll want to use it in app/routes/login.tsx to set the session and redirect to the /jokes route.
+```
