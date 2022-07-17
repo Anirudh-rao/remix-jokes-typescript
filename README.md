@@ -98,7 +98,7 @@ The first thing we want to do is get our routing structure set up. Here are all 
 
 You can programmatically create routes via the `remix.config.js`, but the more common way to create the routes is through the file system. This is called **"file-based routing."**
 
-Each file we put in the app/routes directory is called a **"Route Module"**and by following the route filename convention, we can create the routing URL structure we're looking for. Remix uses React Router under the hood to handle this routing.
+Each file we put in the app/routes directory is called a **Route Module**and by following the route filename convention, we can create the routing URL structure we're looking for. Remix uses React Router under the hood to handle this routing.
 
 
 ## Parametarized Routes
