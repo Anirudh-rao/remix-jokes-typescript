@@ -22,9 +22,7 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Outlet />
-        <ScrollRestoration />
-        <Scripts />
+          Hello World From remix Jokes
         <LiveReload />
       </body>
     </html>
