@@ -129,3 +129,141 @@ This means that you don't have to worry about unexpected CSS clashes when you're
 
 This also means your CSS files can be cached long-term and your CSS is naturally code-split. Performance FTW ⚡
 ```
+
+One quick note about CSS. A lot of you folks may be used to using runtime libraries for CSS (like [Styled-Components](https://styled-components.com/)). While you can use those with Remix, we'd like to encourage you to look into more traditional approaches to CSS. Many of the problems that led to the creation of these styling solutions aren't really problems in Remix, so you can often go with a simpler styling approach.
+
+That said, many Remix users are very happy with [Tailwind](https://tailwindcss.com/) and we recommend this approach. Basically, if it can give you a URL (or a CSS file which you can import to get a URL), then it's a generally a good approach because Remix can then leverage the browser platform for caching and loading/unloading.
+
+## Database
+
+Most real-world applications require some form of data persistence. In our case, we want to save our jokes to a database so people can laugh at our hilarity and even submit their own (coming soon in the authentication section!).
+
+You can use any persistence solution you like with Remix; [Firebase](https://firebase.google.com/), [Supabase](https://supabase.com/), [Airtable](https://www.airtable.com/), [Hasura](https://hasura.io/), [Google Spreadsheets](https://www.google.com/sheets/about/), [Cloudflare Workers KV](https://www.cloudflare.com/products/workers-kv/), [Fauna](https://fauna.com/features), a custom [PostgreSQL](https://www.postgresql.org/), or even your backend team's REST/GraphQL APIs. Seriously. Whatever you want.
+
+#### Set up Prisma
+```
+The prisma team has built a VSCode extension you might find quite helpful when working on the prisma schema.
+```
+
+In this tutorial we're going to use our own `SQLite database`. Essentially, it's a database that lives in a file on your computer, is surprisingly capable, and best of all it's supported by **Prisma** , our favorite database ORM! It's a great place to start if you're not sure what database to use.
+
+There are two packages that we need to get started:
+
+1. `prisma` for interacting with our database and schema during development.
+2. `@prisma/client` for making queries to our database during runtime.
+
+
+Install the prisma packages:
+```
+npm install --save-dev prisma
+npm install @prisma/client
+```
+ Now we can initialize prisma with sqlite:
+```
+npx prisma init --datasource-provider sqlite
+```
+
+That gives us this output:
+```
+✔ Your Prisma schema was created at prisma/schema.prisma
+  You can now open it in your favorite editor.
+
+warn You already have a .gitignore. Don't forget to exclude .env to not commit any secret.
+
+Next steps:
+1. Set the DATABASE_URL in the .env file to point to your existing database. If your database has no tables yet, read https://pris.ly/d/getting-started
+2. Run prisma db pull to turn your database schema into a Prisma schema.
+3. Run prisma generate to generate the Prisma Client. You can then start querying your database.
+
+More information in our documentation:
+https://pris.ly/d/getting-started
+
+```
+
+Now that we've got prisma initialized, we can start modeling our app data. Because this isn't a prisma tutorial, I'll just hand you that and you can read more about the prisma schema from their [docs](https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference):
+
+**prisma/schema.prisma**
+```
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Joke {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  name       String
+  content    String
+}
+```
+
+With that in place, run this:
+```
+npx prisma db push
+```
+
+This command will give you this output:
+```
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": SQLite database "dev.db" at "file:./dev.db"
+
+🚀  Your database is now in sync with your schema. Done in 194ms
+
+✔ Generated Prisma Client (3.5.0) to ./node_modules/
+@prisma/client in 26ms
+
+```
+This command did a few things. For one, it created our database file in prisma/dev.db. Then it pushed all the necessary changes to our database to match the schema we provided. Finally it generated Prisma's TypeScript types so we'll get stellar autocomplete and type checking as we use its API for interacting with our database.
+
+Let's add that `prisma/dev.db` to our `.gitignore` so we don't accidentally commit it to our repository. We'll also want to add the `.env `file to the `.gitignore `as mentioned in the prisma output so we don't commit our secrets!
+```
+node_modules
+
+/.cache
+/build
+/public/build
+
+/prisma/dev.db
+.env
+```
+
+```
+If your database gets messed up, you can always delete the prisma/dev.db file and run npx prisma db push again. Remember to also restart your dev server with npm run dev.
+
+```
+
+Now we just need to run this file. We wrote it in `TypeScript` to get type safety (this is much more useful as our app and data models grow in complexity). So we'll need a way to run it.
+ 
+Install esbuild-register as a dev dependency:
+```
+npm install --save-dev esbuild-register
+```
+
+And now we can run our seed.ts file with that:
+```
+node --require esbuild-register prisma/seed.ts
+```
+Now our database has those jokes in it. No joke!
+
+But I don't want to have to remember to run that script any time I reset the database. Luckily, we don't have to!
+
+Add this to your package.json:
+```
+// ...
+  "prisma": {
+    "seed": "node --require esbuild-register prisma/seed.ts"
+  },
+  "scripts": {
+// ...
+
+```
+Now, whenever we reset the database, prisma will call our seeding file as well.
+
+
+
