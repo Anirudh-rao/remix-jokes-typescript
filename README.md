@@ -398,3 +398,100 @@ The `badRequest` helper function is important because it gives us typechecking t
 Another thing I want to call out is how all of this is just so nice and declarative. You don't have to think about state at all here. Your action gets some data, you process it and return a value. The component consumes the action data and renders based on that value. No managing state here. No thinking about race conditions. Nothing.
 
 Oh, and if you do want to have client-side validation (for while the user is typing), you can simply call the `validateJokeContent` and `validateJokeName` functions that the action is using. You can actually seamlessly share code between the client and server! Now that is cool!
+
+
+# Authentication"
+
+It's the moment we've all been waiting for! We're going to add authentication to our little application. The reason we want to add authentication is so jokes can be associated to the users who created them.
+
+One thing that would be good to understand for this section is how [HTTP cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies) work on the web.
+
+We're going to handroll our own authentication from scratch. Don't worry, I promise it's not as scary as it sounds.
+
+#### Preparing Our Database:
+```
+Remember, if your database gets messed up, you can always delete the prisma/dev.db file and run npx prisma db push again. Remember to also restart your dev server with npm run dev.
+
+```
+
+Let's start by adding `User` to our updated prisma/schema.prisma file.
+
+With that updated, let's go ahead and reset our database to this schema:
+
+Run this:
+```
+npx prisma db push
+
+```
+It will prompt you to reset the database, hit "y" to confirm.
+```
+That will give you this output:
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": SQLite database "dev.db" at "file:./dev.db"
+
+
+⚠️ We found changes that cannot be executed:
+
+  • Added the required column `jokesterId` to the `Joke` table without a default value. There are 9 rows in this table, it is not possible to execute this step.
+
+
+✔ To apply this change we need to reset the database, do you want to continue? All data will be lost. … yes
+The SQLite database "dev.db" from "file:./dev.db" was successfully reset.
+
+🚀  Your database is now in sync with your schema. Done in 1.56s
+
+✔ Generated Prisma Client (3.5.0) to ./node_modules/@prisma/
+client in 34ms
+```
+
+
+With this change, we're going to start experiencing some TypeScript errors in our project because you can no longer create a joke without a jokesterId value.
+
+Great, now run the seed again:
+```
+npx prisma db seed
+```
+And that outputs:
+```
+Environment variables loaded from .env
+Running seed command `node --require esbuild-register prisma/seed.ts` ...
+```
+
+🌱  The seed command has been executed.
+Great! Our database is now ready to go.
+
+
+#### Auth Overview:
+
+So our authentication will be of the traditional username/password variety. We'll be using bcryptjs to hash our passwords so nobody will be able to reasonably brute-force their way into an account.
+
+Go ahead and get that installed right now so we don't forget:
+```
+npm install bcryptjs
+```
+The bcryptjs library has TypeScript definitions in DefinitelyTyped, so let's install those as well:
+```
+npm install --save-dev @types/bcryptjs
+
+```
+
+Here's that written out:
+
+1. On the `/login` route.
+2. User submits login form.
+   Form data is validated.
+If the form data is invalid, return the form with the errors.
+3. Login type is **"register"**
+   Check whether the username is available
+If the username is not available, return the form with an error.
+4.  Hash the password
+    Create a new user
+    Login type is **"login"**
+  Check whether the user exists
+  If the user doesn't exist, return the form with an error.
+5. Check whether the password hash matches
+  If the password hash doesn't match, return the form with an error.
+7. Create a new session
+ Redirect to the `/jokes`route with the `Set-Cookie` header.
