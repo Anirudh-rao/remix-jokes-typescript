@@ -71,3 +71,40 @@ Remix App Server started at http://localhost:3000
 ***
 The <LiveReload /> component is useful during development to auto-refresh our browser whenever we make a change. Because our build server is so fast, the reload will often happen before you even notice ⚡
 ***
+
+Your `app/ directory` should now look like this:
+```
+app
+├── entry.client.tsx
+├── entry.server.tsx
+└── root.tsx
+```
+
+With that set up, go ahead and start the dev server up with this command:
+```
+npm run dev
+```
+
+## Routes
+
+The first thing we want to do is get our routing structure set up. Here are all the routes our app is going to have:
+```
+/
+/jokes
+/jokes/:jokeId
+/jokes/new
+/login
+```
+
+You can programmatically create routes via the `remix.config.js`, but the more common way to create the routes is through the file system. This is called **"file-based routing."**
+
+Each file we put in the app/routes directory is called a **"Route Module"**and by following the route filename convention, we can create the routing URL structure we're looking for. Remix uses React Router under the hood to handle this routing.
+
+
+## Parametarized Routes
+
+Soon we'll add a database that stores our jokes by an ID, so let's add one more route that's a little more unique, a parameterized route:
+```
+/jokes/:jokeId
+```
+Here the parameter `$jokeId` can be anything, and we can lookup that part of the URL up in the database to display the right joke. To make a parameterized route, we use the $ character in the filename. (Read more about the convention [here](https://remix.run/docs/en/v1/api/conventions#route-filenames)).
