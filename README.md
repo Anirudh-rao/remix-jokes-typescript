@@ -98,7 +98,7 @@ The first thing we want to do is get our routing structure set up. Here are all 
 
 You can programmatically create routes via the `remix.config.js`, but the more common way to create the routes is through the file system. This is called **"file-based routing."**
 
-Each file we put in the app/routes directory is called a **Route Module**and by following the route filename convention, we can create the routing URL structure we're looking for. Remix uses React Router under the hood to handle this routing.
+Each file we put in the app/routes directory is called a **Route Module** and by following the route filename convention, we can create the routing URL structure we're looking for. Remix uses React Router under the hood to handle this routing.
 
 
 ## Parametarized Routes
@@ -108,3 +108,24 @@ Soon we'll add a database that stores our jokes by an ID, so let's add one more 
 /jokes/:jokeId
 ```
 Here the parameter `$jokeId` can be anything, and we can lookup that part of the URL up in the database to display the right joke. To make a parameterized route, we use the $ character in the filename. (Read more about the convention [here](https://remix.run/docs/en/v1/api/conventions#route-filenames)).
+
+## Styling
+
+From the beginning of styling on the web, to get CSS on the page, we've used `<link rel="stylesheet" href="/path-to-file.css" />`. This is how you style your Remix applications as well, but Remix makes it much easier than just throwing link tags all over the place. 
+Remix brings the power of its Nested Routing support to CSS and allows you to associate links to routes. When the route is active, the `link` is on the page and the CSS applies. When the route is not active (the user navigates away), the `link` tag is removed and the CSS no longer applies.
+
+You do this by exporting a [links](https://remix.run/docs/en/v1/api/conventions#links) function in your route module.
+
+
+Now if you go to `/ `you may be a bit disappointed. Our beautiful styles aren't applied! Well, you may recall that in the app/root.tsx we're the ones rendering everything about our app. From the `<html>` to the `</html>`. That means if something doesn't show up in there, it's not going to show up at all!
+
+So we need some way to get the `link`exports from all active routes and add `<link />` tags for all of them. Luckily, Remix makes this easy for us by providing a convenience `<Links />` component.
+
+
+🤯 What is this? Why aren't the CSS rules applied? Did the body get removed or something?! Nope. If you open the Elements tab of the dev tools you'll notice that the link tag isn't there at all!
+
+```
+This means that you don't have to worry about unexpected CSS clashes when you're writing your CSS. You can write whatever you like and so long as you check each route your file is linked on you'll know that you haven't impacted other pages! 🔥
+
+This also means your CSS files can be cached long-term and your CSS is naturally code-split. Performance FTW ⚡
+```
